@@ -191,6 +191,9 @@ jobs:
           /bin/bash 02_prepare_package.sh
           /bin/bash 02_target_only.sh
           /bin/bash 04_remove_upx.sh
+          if [ "${{ matrix.name }}" = "R2S" ]; then
+            /bin/bash 09_update_xray.sh
+          fi
 
       - name: QTMDFW4
         working-directory: ${{ github.workspace }}/openwrt
