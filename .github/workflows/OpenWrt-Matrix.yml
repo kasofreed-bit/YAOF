@@ -192,6 +192,7 @@ jobs:
           /bin/bash 02_target_only.sh
           /bin/bash 04_remove_upx.sh
           if [ "${{ matrix.name }}" = "R2S" ]; then
+            /bin/bash 09_prune_r2s.sh
             /bin/bash 09_update_xray.sh
           fi
 
@@ -218,6 +219,9 @@ jobs:
         working-directory: ${{ github.workspace }}/openwrt
         run: |
           make defconfig
+          if [ "${{ matrix.name }}" = "R2S" ]; then
+            python3 ../SCRIPTS/10_verify_r2s.py config
+          fi
 
       - name: Get Architecture
         id: getarch
@@ -283,6 +287,11 @@ jobs:
           echo '================================================================'
           make -j1 V=s
 
+      - name: Verify R2S firmware
+        if: inputs.build_firmware && matrix.name == 'R2S'
+        working-directory: ${{ github.workspace }}/openwrt
+        run: python3 ../SCRIPTS/10_verify_r2s.py image
+
       - name: Organize files
         if: inputs.build_firmware
         id: organize
@@ -310,6 +319,7 @@ jobs:
           path: |
             artifact/*.zip
             artifact/*.sha256sum
+            openwrt/r2s-verification.json
             openwrt/bin/targets/${{ matrix.arch }}/*.manifest
             openwrt/bin/targets/${{ matrix.arch }}/*.buildinfo
           if-no-files-found: error
