@@ -302,6 +302,20 @@ jobs:
           zip ${{ env.artifact_prefix }}-$(date +%Y-%m-%d)-${{ env.latest_release }}-sfs.zip ${{ env.sfs_zip }}
           ls -Ahl
 
+      - name: Save R2S firmware and build information
+        if: inputs.build_firmware && matrix.name == 'R2S'
+        uses: actions/upload-artifact@v4
+        with:
+          name: R2S-firmware-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            artifact/*.zip
+            artifact/*.sha256sum
+            openwrt/bin/targets/${{ matrix.arch }}/*.manifest
+            openwrt/bin/targets/${{ matrix.arch }}/*.buildinfo
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
       - name: Create release
         if: inputs.build_firmware
         id: create_release
