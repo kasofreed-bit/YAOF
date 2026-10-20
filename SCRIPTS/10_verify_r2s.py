@@ -9,7 +9,7 @@ import sys
 
 REQUIRED = {
     "luci-app-passwall", "xray-core", "sing-box", "chinadns-ng", "dns2socks",
-    "microsocks", "luci-app-mosdns", "mosdns", "geo2txt", "v2ray-geoip",
+    "microsocks", "v2ray-geoip",
     "v2ray-geosite", "luci-app-upnp", "miniupnpd-nftables", "dnsmasq-full",
     "firewall4", "luci-base", "luci-nginx", "luci-theme-aurora",
 }
