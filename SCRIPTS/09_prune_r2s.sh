@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # These unused recipes caused recursive Kconfig dependencies in the first build.
-# Keep Passwall, its protocol cores, UPnP and system packages intact.
+# Keep Passwall/Xray and system recipes intact; seed controls optional packages.
 rm -rf package/new/homeproxy \
   package/new/openwrt_helloworld/luci-app-momo \
   package/new/openwrt_helloworld/momo \
