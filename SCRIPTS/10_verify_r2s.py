@@ -14,7 +14,9 @@ REQUIRED = {
     # Protect boot, management, onboard USB Ethernet and future IPv6 support.
     "base-files", "busybox", "procd", "netifd", "fstools", "uci", "ubus",
     "ubox", "libc", "dropbear", "ca-bundle", "r8152-firmware",
-    "kmod-usb-core", "kmod-usb-net", "kmod-usb-net-rtl8152",
+    # r8152 uses the USB core directly, not the generic usbnet module.
+    "kmod-usb-core", "kmod-usb-net-rtl8152", "kmod-mii", "kmod-libphy",
+    "kmod-crypto-sha256",
     "nftables-json", "kmod-nft-core", "kmod-nft-socket", "kmod-nft-tproxy", "kmod-nft-nat",
     "kmod-nf-conntrack", "kmod-nf-conntrack6", "kmod-nf-nat",
     "kmod-nf-reject", "kmod-nf-reject6",
