@@ -62,6 +62,11 @@ class R2SVerifierTests(unittest.TestCase):
         result = self.run_gate()
         self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_rtl8152_selection_does_not_require_generic_usbnet(self):
+        config = self.config.replace("CONFIG_PACKAGE_kmod-usb-net=y\n", "")
+        result = self.run_gate(config=config)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_removed_components_cannot_be_reselected(self):
         for package in ("sing-box", "haproxy", "shadowsocks-rust-sslocal",
                         "shadowsocksr-libev-ssr-redir", "simple-obfs-client", "v2ray-plugin",
@@ -78,7 +83,8 @@ class R2SVerifierTests(unittest.TestCase):
 
     def test_boot_network_dns_and_ipv6_dependencies_are_protected(self):
         for package in ("base-files", "busybox", "procd", "fstools", "netifd", "dropbear",
-                        "kmod-usb-net-rtl8152", "r8152-firmware", "nftables-json", "kmod-nft-tproxy",
+                        "kmod-usb-net-rtl8152", "r8152-firmware", "kmod-mii", "kmod-libphy",
+                        "kmod-crypto-sha256", "nftables-json", "kmod-nft-tproxy",
                         "chinadns-ng", "dnsmasq-full", "geoview", "v2ray-geosite",
                         "odhcp6c", "odhcpd-ipv6only", "kmod-nf-conntrack6"):
             with self.subTest(package=package):
@@ -102,7 +108,11 @@ class R2SVerifierTests(unittest.TestCase):
         payload = gzip.compress(os.urandom(1024 * 1024 + 128))
         for filesystem in ("ext4", "squashfs"):
             (self.target / f"openwrt-rockchip-armv8-friendlyarm_nanopi-r2s-{filesystem}-sysupgrade.img.gz").write_bytes(payload)
-        result = self.run_gate("image")
+        # Real r8152 dependencies must suffice when phone adapters no longer
+        # pull the unrelated generic USB-network driver into the image.
+        config = self.config.replace("CONFIG_PACKAGE_kmod-usb-net=y\n", "")
+        packages = {k: v for k, v in self.packages.items() if k != "kmod-usb-net"}
+        result = self.run_gate("image", config=config, packages=packages)
         self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_removed_components_cannot_reappear_in_image(self):
