@@ -71,7 +71,8 @@ class R2SVerifierTests(unittest.TestCase):
         for package in ("sing-box", "haproxy", "shadowsocks-rust-sslocal",
                         "shadowsocksr-libev-ssr-redir", "simple-obfs-client", "v2ray-plugin",
                         "luci-app-upnp", "miniupnpd-nftables", "wireguard-tools",
-                        "kmod-wireguard", "vmlinux-btf", "kmod-backlight-pwm", "mosdns"):
+                        "kmod-wireguard", "vmlinux-btf", "kmod-backlight-pwm", "mosdns",
+                        "luci-app-flowcone", "flowcone"):
             with self.subTest(package=package):
                 self.assert_rejected(self.run_gate(config=self.config + f"CONFIG_PACKAGE_{package}=y\n"),
                                      "disabled packages selected: " + package)
@@ -116,7 +117,8 @@ class R2SVerifierTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_removed_components_cannot_reappear_in_image(self):
-        for package in ("sing-box", "haproxy", "miniupnpd-nftables", "kmod-wireguard", "vmlinux-btf"):
+        for package in ("sing-box", "haproxy", "miniupnpd-nftables", "kmod-wireguard", "vmlinux-btf",
+                        "luci-app-flowcone", "flowcone"):
             with self.subTest(package=package):
                 self.assert_rejected(self.run_gate("image", packages={**self.packages, package: "test"}),
                                      "contains disabled packages: " + package)
