@@ -3,8 +3,9 @@
 set -euo pipefail
 
 # These unused recipes caused recursive Kconfig dependencies in the first build.
-# Keep Passwall/Xray and system recipes intact; seed controls optional packages.
-rm -rf package/new/homeproxy \
+# Keep Passwall2/Xray and system recipes intact; seed controls optional packages.
+rm -rf package/new/openwrt_helloworld/luci-app-passwall \
+  package/new/homeproxy \
   package/new/openwrt_helloworld/luci-app-momo \
   package/new/openwrt_helloworld/momo \
   package/new/openwrt_helloworld/mihomo-alpha \
@@ -12,7 +13,7 @@ rm -rf package/new/homeproxy \
   package/new/OpenWrt-mihomo \
   feeds/luci/applications/luci-app-weechat
 
-for package_name in luci-app-homeproxy luci-app-momo momo mihomo-alpha \
+for package_name in luci-app-passwall luci-app-homeproxy luci-app-momo momo mihomo-alpha \
   mihomo-meta luci-app-nikki nikki luci-app-weechat; do
   rm -f "package/feeds/luci/$package_name" "package/feeds/packages/$package_name"
 done

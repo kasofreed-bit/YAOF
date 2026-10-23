@@ -1,7 +1,7 @@
 """Fault-injection checks for the build gate, not firmware boot tests.
 
-Fixtures: package manifest from successful build 39280782139; Passwall recipe
-from QiuSimons/OpenWrt-Add at 01c1b9c927791bd33f7bfdcfe454e5b8a4cdcf3f.
+Fixtures: package manifest from successful build 39280782139; Passwall2 recipe
+from QiuSimons/OpenWrt-Add at ec7092aa5437fe5608371f0723b54789f8fff0af.
 Run: python3 -m unittest discover -s tests -v
 """
 import gzip
@@ -32,17 +32,18 @@ class R2SVerifierTests(unittest.TestCase):
         self.packages = dict(line.split(" - ", 1) for line in
                              (FIXTURES / "r2s-before-trim.manifest").read_text().splitlines())
         self.packages = {k: v for k, v in self.packages.items() if k not in disabled}
+        self.packages["luci-app-passwall2"] = "26.10.20-r1"
         self.config = "\n".join("CONFIG_PACKAGE_" + p + "=y" for p in self.packages) + "\n"
         self.config += "CONFIG_TARGET_rockchip_armv8_DEVICE_friendlyarm_nanopi-r2s=y\n"
-        for option in ("INCLUDE_Xray", "INCLUDE_Geoview", "INCLUDE_V2ray_Geodata",
-                       "Nftables_Transparent_Proxy"):
-            self.config += "CONFIG_PACKAGE_luci-app-passwall_" + option + "=y\n"
+        self.config += "CONFIG_PACKAGE_dnsmasq_full_nftset=y\n"
+        for option in ("Basic_Core_Xray", "Nftables_Transparent_Proxy"):
+            self.config += "CONFIG_PACKAGE_luci-app-passwall2_" + option + "=y\n"
         recipe_dir = self.prepared / "package/new/openwrt_helloworld"
-        for package, fixture in (("luci-app-passwall", "passwall.Makefile"),
+        for package, fixture in (("luci-app-passwall2", "passwall2.Makefile"),
                                  ("xray-core", "xray.Makefile")):
             (recipe_dir / package).mkdir(parents=True)
             shutil.copyfile(FIXTURES / fixture, recipe_dir / package / "Makefile")
-        self.recipe = recipe_dir / "luci-app-passwall/Makefile"
+        self.recipe = recipe_dir / "luci-app-passwall2/Makefile"
         self.target = self.prepared / "bin/targets/rockchip/armv8"
         self.target.mkdir(parents=True)
         self.manifest = self.target / "openwrt-rockchip-armv8-friendlyarm_nanopi-r2s.manifest"
@@ -72,22 +73,39 @@ class R2SVerifierTests(unittest.TestCase):
                         "shadowsocksr-libev-ssr-redir", "simple-obfs-client", "v2ray-plugin",
                         "luci-app-upnp", "miniupnpd-nftables", "wireguard-tools",
                         "kmod-wireguard", "vmlinux-btf", "kmod-backlight-pwm", "mosdns",
-                        "luci-app-flowcone", "flowcone"):
+                        "luci-app-flowcone", "flowcone", "luci-app-passwall",
+                        "dns2socks", "microsocks", "ipt2socks"):
             with self.subTest(package=package):
                 self.assert_rejected(self.run_gate(config=self.config + f"CONFIG_PACKAGE_{package}=y\n"),
                                      "disabled packages selected: " + package)
 
     def test_default_optional_core_switch_cannot_regress(self):
-        self.assert_rejected(self.run_gate(config=self.config +
-                             "CONFIG_PACKAGE_luci-app-passwall_INCLUDE_SingBox=y\n"),
-                             "disabled packages selected: luci-app-passwall_INCLUDE_SingBox")
+        for option in ("Basic_Core_SingBox", "Basic_Core_All", "INCLUDE_Haproxy"):
+            package = "luci-app-passwall2_" + option
+            with self.subTest(option=option):
+                self.assert_rejected(self.run_gate(config=self.config + f"CONFIG_PACKAGE_{package}=y\n"),
+                                     "disabled packages selected: " + package)
+
+    def test_passwall2_xray_and_dns_nftset_options_are_required(self):
+        for symbol in ("luci-app-passwall2_Basic_Core_Xray",
+                       "luci-app-passwall2_Nftables_Transparent_Proxy", "dnsmasq_full_nftset"):
+            with self.subTest(symbol=symbol):
+                self.assert_rejected(self.run_gate(config=self.config.replace(f"CONFIG_PACKAGE_{symbol}=y\n", "")),
+                                     "missing CONFIG_PACKAGE_" + symbol)
+
+    def test_withdrawn_bbr_patch_cannot_return(self):
+        patch = self.prepared / "target/linux/generic/backport-6.12/010-0020-net-tcp_bbr-add-lfn-loss-tolerance.patch"
+        patch.parent.mkdir(parents=True)
+        patch.write_text("withdrawn patch\n")
+        self.assert_rejected(self.run_gate(), "withdrawn BBR LFN patch is present")
 
     def test_boot_network_dns_and_ipv6_dependencies_are_protected(self):
         for package in ("base-files", "busybox", "procd", "fstools", "netifd", "dropbear",
                         "kmod-usb-net-rtl8152", "r8152-firmware", "kmod-mii", "kmod-libphy",
                         "kmod-crypto-sha256", "nftables-json", "kmod-nft-tproxy",
                         "chinadns-ng", "dnsmasq-full", "geoview", "v2ray-geosite",
-                        "odhcp6c", "odhcpd-ipv6only", "kmod-nf-conntrack6"):
+                        "odhcp6c", "odhcpd-ipv6only", "kmod-nf-conntrack6", "kmod-tcp-bbr",
+                        "luci-app-passwall2"):
             with self.subTest(package=package):
                 config = self.config.replace(f"CONFIG_PACKAGE_{package}=y\n", "")
                 self.assert_rejected(self.run_gate(config=config), "missing selections: " + package)
@@ -118,7 +136,8 @@ class R2SVerifierTests(unittest.TestCase):
 
     def test_removed_components_cannot_reappear_in_image(self):
         for package in ("sing-box", "haproxy", "miniupnpd-nftables", "kmod-wireguard", "vmlinux-btf",
-                        "luci-app-flowcone", "flowcone"):
+                        "luci-app-flowcone", "flowcone", "luci-app-passwall",
+                        "dns2socks", "microsocks", "ipt2socks"):
             with self.subTest(package=package):
                 self.assert_rejected(self.run_gate("image", packages={**self.packages, package: "test"}),
                                      "contains disabled packages: " + package)
